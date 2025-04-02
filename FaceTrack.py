@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import dlib
 import math
+import hashlib
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 
 
 
@@ -66,41 +69,65 @@ def getFaceData(x,y,w,h,gray,frame):
         
         faces = detector(gray)
     
-        # Draw landmarks on the frame of a circle for expert part detected
+        # Draw landmarks on the frame of a circle for expected part detected
         for n in range(68):  # 68 landmarks
-            x_landmark = landmarks.part(n).x
-            y_landmark = landmarks.part(n).y
-            cv2.circle(frame, (x_landmark, y_landmark), 2, (0, 255, 0), -1)
+            x_landmark_leftEye = landmarks.part(n).x
+            y_landmark_rightEye = landmarks.part(n).y
             
-        left, right =getEyeWidth(landmarks)
-        distanceBetweenEyes = distanceCalc(right, left)
-        print(distanceBetweenEyes)
+            
+            cv2.circle(frame, (x_landmark_leftEye, y_landmark_rightEye), 2, (0, 255, 0), -1)
+          
+        left, right, distanceBetween =getEyeWidth(landmarks)
+        widthOfEye = [left,right]
+        print(f"Left eye width {widthOfEye[0]}, Right eyes width {widthOfEye[1]}")
+        
+        
+        distanceUsedForKey = distanceBetween #TODO: Use this to decrypt by saying if distance is within 10%
+        
+        key = str(distanceBetween)
+        hashedKey = hashlib.sha256(key.encode()).digest()
+        
+        FirstBitskey = hashedKey[:32]
+        cipher = AES.new(FirstBitskey, AES.MODE_CBC)
+        print(f"Hashed key = {hashedKey}")
+        
+        
 
+        
+        
+       
+  
+       
 def distanceCalc(point1,point2):
+    
     return math.sqrt(((point1[0] - point2[0])**2) + ((point1[1] - point2[1])**2)) #sqrt((x2-x1)**2 + (y2-y1)**2)
 
+
 def getEyeWidth(landmarks):
-    leftOuter = (landmarks.part(36).x, landmarks.part(36).y)
-    leftInner = (landmarks.part(39).x, landmarks.part(39).y)
+    ##left eye left point == 37 left eye right point == 40
+    #https://www.studytonight.com/post/dlib-68-points-face-landmark-detection-with-opencv-and-python
+    leftOuter = (landmarks.part(37).x, landmarks.part(37).y) # 36 is the number for left eye outer
+    leftInner = (landmarks.part(40).x, landmarks.part(40).y) #39 inner
+    ##right eye left point == 43   right eyes right point == 46
+    rightInner = (landmarks.part(43).x, landmarks.part(43).y)
+    rightOuter = (landmarks.part(46).x, landmarks.part(46).y)
     
-    rightOuter = (landmarks.part(42).x, landmarks.part(42).y)
-    rightInner = (landmarks.part(45).x, landmarks.part(45).y)
     
-    leftWidth = distanceCalc(leftOuter,leftInner)
-    rightWidth = distanceCalc(rightOuter,rightInner)
+    face_width = math.sqrt((landmarks.part(1).x - landmarks.part(17).x)**2)  # Width across cheeks used for normalizing the image so distance doesnt affect result
 
-    return leftWidth, rightWidth
+    
+    leftWidth = distanceCalc(leftOuter,leftInner)/face_width
+    rightWidth = distanceCalc(rightInner,rightOuter)/face_width
+    
+    
+    ##find distasnce between eye inners
+    distanceBetweenBoth = distanceCalc(leftInner,rightInner)/face_width
+    print(f"Distance between inner cornias = {distanceBetweenBoth}")
+    
+
+    return leftWidth, rightWidth, distanceBetweenBoth
 
 
-def getDistanceBetweenEyes(landmarks):
-    leftCenter = ((landmarks.part(36).x, landmarks.part(39).y)//2, (landmarks.part(36).y+ landmarks.part(39).y)//2) ##// for floor (whole number) division
-    
-    rightCenter = ((landmarks.part(42).x, landmarks.part(45).x)//2, (landmarks.part(42).y, landmarks.part(45).y)//2)
-    
-    distance =distanceCalc(leftCenter, rightCenter)
-    
-    return distance
-    
 
             
 openWebCam()
