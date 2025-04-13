@@ -103,18 +103,18 @@ def getFaceData(x, y, w, h, gray, frame):
     if results.multi_face_landmarks:
         for face_landmarks in results.multi_face_landmarks:
             h, w, _ = frame.shape
-            #Predict Landmark indices
+            #Predict Landmark for facial features of users
             landmarks = [(int(pt.x * w), int(pt.y * h)) for pt in face_landmarks.landmark]
 
-            # Draw landmarks
+            # Draws a circle where the landmarks are.
             for idx, (x_lm, y_lm) in enumerate(landmarks):
                 cv2.circle(frame, (x_lm, y_lm), 1, (0, 255, 0), -1)
-
+            #This defines the key features including the left, right, and between_eyes
             left_eye = (landmarks[33], landmarks[133])
             right_eye = (landmarks[362], landmarks[263])
             between_eyes = (landmarks[133], landmarks[362])
 
-
+            #Normalizes the face width vector
             face_width = np.linalg.norm(
                 np.array(landmarks[234]) - np.array(landmarks[454]))
             left = distanceCalc(*left_eye) / face_width
