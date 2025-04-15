@@ -17,6 +17,7 @@ rightUsedForKey = 0
 encryptDist = distanceUsedForKey
 encryptLeft = leftUsedForKey
 encryptRight = rightUsedForKey
+hashedPlainText=""
 
 # Text to be encrypted and deciphered
 plaintext = "Hello World"
@@ -172,6 +173,7 @@ def encryptLandmarks(x):
     global encryptDist
     global saved_iv
     global firstBitskeyDist
+    global hashedPlainText
 
 
     encryptDist = distanceUsedForKey
@@ -192,13 +194,14 @@ def encryptLandmarks(x):
 
     cipherDistAES = AES.new(firstBitskeyDist, AES.MODE_CTR)
     saved_iv=cipherDistAES.nonce
-    cipherLeftAES = AES.new(firstBitsLeft, AES.MODE_CBC)
-    cipherRightAES = AES.new(firstBitsRight, AES.MODE_CBC)
+    cipherLeftAES = AES.new(firstBitsLeft, AES.MODE_CTR)
+    cipherRightAES = AES.new(firstBitsRight, AES.MODE_CTR)
     plaintext_bytes = plaintext.encode()  # have to make string byte form to encrypt
 
     ciphertext = cipherDistAES.encrypt(plaintext_bytes)
     ciphertext_b64 = base64.b64encode(ciphertext).decode()
     plaintext = ciphertext_b64
+    hashedPlainText = plaintext
 
     print(f"Hashed key Distance= {hashedKeyDist}")
 
@@ -209,14 +212,20 @@ def decryptLandmarks():
     global encryptDist
     global distanceUsedForKey
     global firstBitskeyDist
-    global plaintext
+    global plaintext, hashedPlainText
     global saved_iv
+    global decrypt
+
 
     # 10 % greater or less match to decrypt
     print(f"Distance key {distanceUsedForKey}")
     print(f"Encrypted Distance {encryptDist}")
     encryptDist=float(encryptDist)
-    if (encryptDist - (encryptDist * .1)) <= distanceUsedForKey <= ((encryptDist * .1) + encryptDist):
+    print(f"encrypt distance less than 10% {encryptDist- (encryptDist*.01)}, distanceUsedForKey {distanceUsedForKey}, encrypt distance greater than 10% {encryptDist*.01 + encryptDist}")
+
+
+
+    if (encryptDist - (encryptDist * .01)) <= distanceUsedForKey <= ((encryptDist * .01) + encryptDist):
 
         decrypt_cipher = AES.new(firstBitskeyDist, AES.MODE_CTR,nonce=saved_iv)
 
@@ -226,6 +235,10 @@ def decryptLandmarks():
 
         plaintext = decrypted_bytes.decode()
         print(plaintext)
+    else:
+        print("back to encrypting")
+        plaintext = hashedPlainText
+
 
 
 def startDecrypt(x):
