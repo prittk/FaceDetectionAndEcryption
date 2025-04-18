@@ -8,6 +8,8 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 
+import string
+
 
 # constantly used
 distanceUsedForKey = 0
@@ -20,7 +22,7 @@ encryptRight = rightUsedForKey
 hashedPlainText=""
 
 # Text to be encrypted and deciphered
-plaintext = "Hello World"
+plaintext = ""
 ciphertext = ""
 cipherDistAES = 0
 
@@ -29,6 +31,7 @@ decrypt = False
 
 def openWebCam():
     global decrypt
+    global plaintext
     webCam = cv2.VideoCapture(0)  # open webcame
     detectFace = cv2.CascadeClassifier('../../Downloads/haarcascade_frontalface_default.xml')
     cv2.namedWindow('frame')
@@ -47,6 +50,7 @@ def openWebCam():
         cv2.putText(text_pane, plaintext, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         combined_frame = np.vstack((frame, text_pane))
+        keyboard_input()
 
         if decrypt:
             print("Trying to decrypt")
@@ -60,7 +64,22 @@ def openWebCam():
 
     webCam.release()
     cv2.destroyAllWindows()
+##Not mine found on stackoverflow for entering in text
+def keyboard_input():
+    global plaintext
+    text = ""
+    letters = string.ascii_lowercase + string.digits + string.ascii_uppercase + ' '
 
+
+    key = cv2.waitKey(1)
+    if key == ord('\b'):  # Backspace key
+                plaintext = plaintext[:-1]  # Remove the last character
+    for letter in letters:
+                if key == ord(letter):
+                    text = text + letter
+
+    plaintext = plaintext + text
+    return
 
 def detectFaces(webCam, detectFace, facedata):
     i = 0
@@ -115,7 +134,8 @@ def getFaceData(x, y, w, h, gray, frame):
             right_eye = (landmarks[362], landmarks[263])
             between_eyes = (landmarks[133], landmarks[362])
 
-            #Normalizes the face width vector
+            #Normalizes the eye distance when moving in and out with face width vector (if width of face changes then eye width will
+            ##change by same distance
             face_width = np.linalg.norm(
                 np.array(landmarks[234]) - np.array(landmarks[454]))
             left = distanceCalc(*left_eye) / face_width
@@ -144,26 +164,26 @@ def drawPoints(image, faceLandmarks, startpoint, endpoint, isClosed=False):
 def distanceCalc(point1, point2):
     return math.sqrt(((point1[0] - point2[0]) ** 2) + ((point1[1] - point2[1]) ** 2))  # sqrt((x2-x1)**2 + (y2-y1)**2)
 
-
-def getEyeWidth(landmarks):
-    ##left eye left point == 37 left eye right point == 40
-    # https://www.studytonight.com/post/dlib-68-points-face-landmark-detection-with-opencv-and-python
-    leftOuter = (landmarks.part(36).x, landmarks.part(36).y)  # 36 is the number for left eye outer
-    leftInner = (landmarks.part(39).x, landmarks.part(39).y)  # 39 inner
-    ##right eye left point == 43   right eyes right point == 46
-    rightInner = (landmarks.part(42).x, landmarks.part(42).y)
-    rightOuter = (landmarks.part(45).x, landmarks.part(45).y)
-
-    face_width = math.sqrt((landmarks.part(0).x - landmarks.part(
-        16).x) ** 2)  # Width across cheeks used for normalizing the image so distance doesnt affect result
-    leftWidth = distanceCalc(leftOuter, leftInner) / face_width  # left eye width fixed fro distance
-    rightWidth = distanceCalc(rightInner, rightOuter) / face_width  # right eye width
-
-    ##find distasnce between eye inners
-    distanceBetweenBoth = distanceCalc(leftInner, rightInner) / face_width
-    print(f"Distance between inner cornias = {distanceBetweenBoth}")
-
-    return leftWidth, rightWidth, distanceBetweenBoth
+######No longer used was for Dllibs
+# def getEyeWidth(landmarks):
+#     ##left eye left point == 37 left eye right point == 40
+#     # https://www.studytonight.com/post/dlib-68-points-face-landmark-detection-with-opencv-and-python
+#     leftOuter = (landmarks.part(36).x, landmarks.part(36).y)  # 36 is the number for left eye outer
+#     leftInner = (landmarks.part(39).x, landmarks.part(39).y)  # 39 inner
+#     ##right eye left point == 43   right eyes right point == 46
+#     rightInner = (landmarks.part(42).x, landmarks.part(42).y)
+#     rightOuter = (landmarks.part(45).x, landmarks.part(45).y)
+#
+#     face_width = math.sqrt((landmarks.part(0).x - landmarks.part(
+#         16).x) ** 2)  # Width across cheeks used for normalizing the image so distance doesnt affect result
+#     leftWidth = distanceCalc(leftOuter, leftInner) / face_width  # left eye width fixed fro distance
+#     rightWidth = distanceCalc(rightInner, rightOuter) / face_width  # right eye width
+#
+#     ##find distasnce between eye inners
+#     distanceBetweenBoth = distanceCalc(leftInner, rightInner) / face_width
+#     print(f"Distance between inner cornias = {distanceBetweenBoth}")
+#
+#     return leftWidth, rightWidth, distanceBetweenBoth
 
 
 def encryptLandmarks(x):
@@ -175,18 +195,15 @@ def encryptLandmarks(x):
     global firstBitskeyDist
     global hashedPlainText
 
-
+    ##distance of parts used to encrypt
     encryptDist = distanceUsedForKey
     encryptLeft = leftUsedForKey
     encryptRight = rightUsedForKey
+    ##make it a sting to make a hash
 
-    keyDist = str(encryptDist)
-    keyLeft = str(encryptLeft)
-    keyRight = str(encryptRight)
-
-    hashedKeyDist = hashlib.sha256(keyDist.encode()).digest()
-    hashedLeft = hashlib.sha256(keyLeft.encode()).digest()
-    hashedRight = hashlib.sha256(keyRight.encode()).digest()
+    hashedKeyDist = hashlib.sha256(str(encryptDist).encode()).digest()
+    hashedLeft = hashlib.sha256(str(encryptLeft).encode()).digest()
+    hashedRight = hashlib.sha256(str(encryptRight).encode()).digest()
     # get 32 bytes
     firstBitskeyDist = hashedKeyDist[:32]
     firstBitsLeft = hashedLeft[:32]  # 0 - 31
@@ -221,11 +238,11 @@ def decryptLandmarks():
     print(f"Distance key {distanceUsedForKey}")
     print(f"Encrypted Distance {encryptDist}")
     encryptDist=float(encryptDist)
-    print(f"encrypt distance less than 10% {encryptDist- (encryptDist*.01)}, distanceUsedForKey {distanceUsedForKey}, encrypt distance greater than 10% {encryptDist*.01 + encryptDist}")
+    print(f"encrypt distance less than 3.5% {encryptDist- (encryptDist*.03)}, distanceUsedForKey {distanceUsedForKey}, encrypt distance greater than 3.5% {encryptDist*.03 + encryptDist}")
 
 
 
-    if (encryptDist - (encryptDist * .01)) <= distanceUsedForKey <= ((encryptDist * .01) + encryptDist):
+    if (encryptDist - (encryptDist * .035)) <= distanceUsedForKey <= ((encryptDist * .035) +encryptDist):
 
         decrypt_cipher = AES.new(firstBitskeyDist, AES.MODE_CTR,nonce=saved_iv)
 
