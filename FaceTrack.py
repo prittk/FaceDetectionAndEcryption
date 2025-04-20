@@ -12,13 +12,17 @@ import string
 
 
 # constantly used
-distanceUsedForKey = 0
+EyeDistanceUsedForKey = 0
 leftUsedForKey = 0
 rightUsedForKey = 0
+noseKey = 0
+mouthKey = 0
 # key saved to ecrypt
-encryptDist = distanceUsedForKey
-encryptLeft = leftUsedForKey
-encryptRight = rightUsedForKey
+encryptDist = 0
+encryptLeft = 0
+encryptRight = 0
+encryptNose = 0
+encryptMouth = 0
 hashedPlainText=""
 
 # Text to be encrypted and deciphered
@@ -30,6 +34,7 @@ decrypt = False
 
 
 def openWebCam():
+
     global decrypt
     global plaintext
     webCam = cv2.VideoCapture(0)  # open webcame
@@ -37,6 +42,7 @@ def openWebCam():
     cv2.namedWindow('frame')
     switch = 'Encrypt 0 : OFF \n1 : ON'
     switch2 = 'Decipher 0 : OFF \n1 : ON'
+
     cv2.createTrackbar(switch, 'frame', 0, 1,
                        encryptLandmarks)  # cv2 doesnt have button support through pip install, for ease of use for everyone i made a switch trackbar
     cv2.createTrackbar(switch2, 'frame', 0, 1, startDecrypt)
@@ -115,7 +121,8 @@ face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1)
 
 def getFaceData(x, y, w, h, gray, frame):
 
-    global distanceUsedForKey, leftUsedForKey, rightUsedForKey
+    global EyeDistanceUsedForKey, leftUsedForKey, rightUsedForKey   , noseKey, mouthKey
+    FacialFeaturesForDecryption = [] #LeftEye,RightEye,DistanceBetweenEyes
 
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = face_mesh.process(rgb_frame)
@@ -129,27 +136,35 @@ def getFaceData(x, y, w, h, gray, frame):
             # Draws a circle where the landmarks are.
             for idx, (x_lm, y_lm) in enumerate(landmarks):
                 cv2.circle(frame, (x_lm, y_lm), 1, (0, 255, 0), -1)
-            #This defines the key features including the left, right, and between_eyes
+            #This defines the key features including the left, right, and between_eyes , nose, and mouth
             left_eye = (landmarks[33], landmarks[133])
             right_eye = (landmarks[362], landmarks[263])
             between_eyes = (landmarks[133], landmarks[362])
+            nose = (landmarks[0],landmarks[16])
+            mouth = (landmarks[60],landmarks[290])
 
             #Normalizes the eye distance when moving in and out with face width vector (if width of face changes then eye width will
             ##change by same distance
             face_width = np.linalg.norm(
                 np.array(landmarks[234]) - np.array(landmarks[454]))
-            left = (distanceCalc(*left_eye) / face_width) * 100
-            right = (distanceCalc(*right_eye) / face_width) *100
-            distanceBetween = (distanceCalc(*between_eyes) / face_width) * 100
+            left = (distanceCalc(*left_eye) / face_width)
+            right = (distanceCalc(*right_eye) / face_width)
+            distanceBetween = (distanceCalc(*between_eyes) / face_width)
+            nose = (distanceCalc(*nose) / face_width)
+            mouth =   (distanceCalc(*mouth) / face_width)
 
             print(f"Left eye width {left}, Right eyes width {right}")
-
-            distanceUsedForKey = distanceBetween+left+right
-            print(distanceUsedForKey)
+            print(f"Nose = {nose}, mouth = {mouth}")
+            EyeDistanceUsedForKey = distanceBetween
+            print(EyeDistanceUsedForKey)
             leftUsedForKey = left
             rightUsedForKey = right
+            noseKey = nose
+            mouthKey = mouth
     else:
-        distanceUsedForKey = 0
+        EyeDistanceUsedForKey = 0
+        leftUsedForKey = 0
+        rightUsedForKey = 0
 
 
 def drawPoints(image, faceLandmarks, startpoint, endpoint, isClosed=False):
@@ -193,17 +208,25 @@ def encryptLandmarks(x):
     global plaintext  # access the global
     global ciphertext
     global cipherDistAES
-    global encryptDist
+    global encryptDist, leftUsedForKey,rightUsedForKey  , EyeDistanceUsedForKey, encryptRight,encryptLeft , noseKey, mouthKey, encryptNose, encryptMouth
     global saved_iv
     global firstBitskeyDist
     global hashedPlainText
 
     ##distance of parts used to encrypt
-    encryptDist = distanceUsedForKey
+    encryptDist = EyeDistanceUsedForKey
+    encryptRight = rightUsedForKey
+    encryptLeft = leftUsedForKey
+    encryptNose = noseKey
+    encryptMouth = mouthKey
+
+
+    ###alll features added togethe rto make key
+    totalFeaturesForKey = encryptLeft + encryptRight + encryptDist +encryptMouth + encryptNose
 
     ##make it a sting to make a hash
 
-    hashedKeyDist = hashlib.sha256(str(encryptDist).encode()).digest()
+    hashedKeyDist = hashlib.sha256(str(totalFeaturesForKey).encode()).digest()
 
     # get 32 bytes
     firstBitskeyDist = hashedKeyDist[:32]
@@ -224,8 +247,8 @@ def encryptLandmarks(x):
 def decryptLandmarks():
     global cipherDistAES
     global ciphertext
-    global encryptDist
-    global distanceUsedForKey
+    global encryptDist, encryptLeft,encryptRight ,encryptNose, encryptMouth
+    global EyeDistanceUsedForKey, leftUsedForKey , rightUsedForKey, noseKey,mouthKey
     global firstBitskeyDist
     global plaintext, hashedPlainText
     global saved_iv
@@ -233,27 +256,39 @@ def decryptLandmarks():
 
 
     # 10 % greater or less match to decrypt
-    print(f"Distance key {distanceUsedForKey}")
+    print(f"Distance key {EyeDistanceUsedForKey}")
     print(f"Encrypted Distance {encryptDist}")
     encryptDist=float(encryptDist)
 
-    print(f"encrypt distance less than 3.5% {encryptDist- (encryptDist*.03)}, distanceUsedForKey {distanceUsedForKey}, encrypt distance greater than 3.5% {encryptDist*.03 + encryptDist}")
+    print(f"encrypt distance less than 3.5% {encryptDist- (encryptDist*.03)}, distanceUsedForKey {EyeDistanceUsedForKey}, encrypt distance greater than 3.5% {encryptDist*.03 + encryptDist}")
 
+    print(f"mouthEncrypt = {encryptMouth}, mouth key = {mouthKey}")
+    print(f"mouthEncrypt = {encryptNose}, mouth key = {noseKey}")
 
+    if (encryptDist - (encryptDist * .05)) <= EyeDistanceUsedForKey <= ((encryptDist * .05) +encryptDist):
+        if (encryptLeft - (encryptLeft * .05)) <= leftUsedForKey <= ((encryptLeft * .05) + encryptLeft):
+            if (encryptRight - (encryptRight * .05)) <= rightUsedForKey <= ((encryptRight * .05) + encryptRight):
+                if (encryptNose - (encryptNose * .05)) <= noseKey <= ((encryptNose * .05) + encryptNose):
+                    if (encryptMouth - (encryptMouth * .05)) <= mouthKey <= ((encryptMouth * .05) + encryptMouth):
 
-    if (encryptDist - (encryptDist * .035)) <= distanceUsedForKey <= ((encryptDist * .035) +encryptDist):
+                        decrypt_cipher = AES.new(firstBitskeyDist, AES.MODE_CTR,nonce=saved_iv)
 
-        decrypt_cipher = AES.new(firstBitskeyDist, AES.MODE_CTR,nonce=saved_iv)
+                        decrypted_bytes = decrypt_cipher.decrypt(ciphertext)
 
-        decrypted_bytes = decrypt_cipher.decrypt(ciphertext)
+                        print("Decrypted Data:",decrypted_bytes)
 
-        print("Decrypted Data:",decrypted_bytes)
-
-        plaintext = decrypted_bytes.decode()
-        print(plaintext)
+                        plaintext = decrypted_bytes.decode()
+                        print(plaintext)
+            else:
+                print("back to encrypting")
+                plaintext = hashedPlainText
+        else:
+            print("back to encrypting")
+            plaintext = hashedPlainText
     else:
         print("back to encrypting")
         plaintext = hashedPlainText
+
 
 
 
