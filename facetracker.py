@@ -13,7 +13,8 @@ from Crypto.Random import get_random_bytes
 
 import string
 
-
+###Globals are used because of the slider, else we would just pass as an argument. The slider doesnt accept the passing of arguments
+###or returning of variables
 # constantly used
 EyeDistanceUsedForKey = 0
 leftUsedForKey = 0
@@ -45,7 +46,8 @@ def openWebCam():
     cv2.namedWindow('frame')
     switch = 'Encrypt 0 : OFF \n1 : ON'
     switch2 = 'Decipher 0 : OFF \n1 : ON'
-
+    ###Globals are used because of the slider, else we would just pass as an argument. The slider doesnt accept the passing of arguments
+    ###or returning of variables
     cv2.createTrackbar(switch, 'frame', 0, 1,
                        encryptLandmarks)  # cv2 doesnt have button support through pip install, for ease of use for everyone i made a switch trackbar
     cv2.createTrackbar(switch2, 'frame', 0, 1, startDecrypt)
@@ -209,6 +211,8 @@ def distanceCalc(point1, point2):
 
 
 def encryptLandmarks(x):
+    ###Globals are used because of the slider, else we would just pass as an argument. The slider doesnt accept the passing of arguments
+    ###or returning of variables
     global plaintext  # access the global
     global ciphertext
     global cipherDistAES
@@ -257,8 +261,11 @@ def ssim_of_enc_and_dec(encryption_img, decryption_img):
     decryption_img_grey=cv2.resize(decryption_img_grey,(encryption_img_grey.shape[1],encryption_img_grey.shape[0]))
     (score,diff)=ssim(encryption_img_grey,decryption_img_grey,full=True)
     return score
+
+
 def decryptLandmarks():
-    global cipherDistAES
+    ###Globals are used because of the slider, else we would just pass as an argument. The slider doesnt accept the passing of arguments
+    ###or returning of variables
     global ciphertext
     global encryptDist, encryptLeft,encryptRight ,encryptNose, encryptMouth
     global EyeDistanceUsedForKey, leftUsedForKey , rightUsedForKey, noseKey,mouthKey
@@ -277,18 +284,9 @@ def decryptLandmarks():
     print(f"Encrypted Distance {encryptDist}")
     encryptDist=float(encryptDist)
 
-    print(f"encrypt distance less than 3.5% {encryptDist- (encryptDist*.03)}, distanceUsedForKey {EyeDistanceUsedForKey}, encrypt distance greater than 3.5% {encryptDist*.03 + encryptDist}")
 
-    print(f"mouthEncrypt = {encryptMouth}, mouth key = {mouthKey}")
-    print(f"mouthEncrypt = {encryptNose}, mouth key = {noseKey}")
-
-    # if (encryptDist - (encryptDist * .05)) <= EyeDistanceUsedForKey <= ((encryptDist * .05) +encryptDist):
-    #     if (encryptLeft - (encryptLeft * .05)) <= leftUsedForKey <= ((encryptLeft * .05) + encryptLeft):
-    #         if (encryptRight - (encryptRight * .05)) <= rightUsedForKey <= ((encryptRight * .05) + encryptRight):
-    #             if (encryptNose - (encryptNose * .05)) <= noseKey <= ((encryptNose * .05) + encryptNose):
-    #                 if (encryptMouth - (encryptMouth * .05)) <= mouthKey <= ((encryptMouth * .05) + encryptMouth):
+    #get key and decrypt when similarity is accepted
     if similarity>=.5:
-
                         decrypt_cipher = AES.new(firstBitskeyDist, AES.MODE_CTR,nonce=saved_iv)
 
                         decrypted_bytes = decrypt_cipher.decrypt(ciphertext)
@@ -301,15 +299,7 @@ def decryptLandmarks():
     else:
         print("back to encrypting")
         plaintext = hashedPlainText
-                # else:
-                #     print("back to encrypting")
-                #     plaintext = hashedPlainText
-    #     else:
-    #         print("back to encrypting")
-    #         plaintext = hashedPlainText
-    # else:
-    #     print("back to encrypting")
-    #     plaintext = hashedPlainText
+
 
 
 
